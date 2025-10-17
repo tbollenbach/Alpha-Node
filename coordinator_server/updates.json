@@ -1,0 +1,41 @@
+{
+  "current_version": "2.0.0",
+  "latest_version": "2.0.0",
+  "update_available": false,
+  "updates": {
+    "2.0.0": {
+      "version": "2.0.0",
+      "release_date": "2025-10-16T20:30:00Z",
+      "description": "Alpha Update Agent v2.0.0 - Resource Pooling System",
+      "changes": [
+        "Added hardware resource pooling module",
+        "Enhanced dashboard with resource monitoring", 
+        "Real-time CPU, memory, storage, and GPU tracking",
+        "Improved coordinator server with resource APIs",
+        "Better error handling and logging"
+      ],
+      "download_url": "https://alpha-node.onrender.com/updates/alpha-agent-2.0.0.zip",
+      "file_size": 0,
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "placeholder"
+      },
+      "requirements": {
+        "python": ">=3.10",
+        "dependencies": [
+          "requests>=2.31.0",
+          "psutil>=5.9.0",
+          "flask>=3.0.0"
+        ]
+      },
+      "installation": {
+        "backup": true,
+        "restart_required": true,
+        "modules_to_enable": [
+          "simple_coordinator.py",
+          "resource_pool.py"
+        ]
+      }
+    }
+  }
+}

@@ -65,3 +65,33 @@
 2025-10-16 19:51:53,877 - AlphaUpdater - INFO - Checking for updates at https://alpha-node.onrender.com/updates.json
 2025-10-16 19:51:54,288 - AlphaUpdater - ERROR - Failed to check for updates: 404 Client Error: Not Found for url: https://alpha-node.onrender.com/updates.json
 2025-10-16 19:51:54,288 - AlphaAgent - INFO - No updates available
+2025-10-16 20:14:38,596 - AlphaAgent - INFO - === Alpha Update Agent Starting ===
+2025-10-16 20:14:38,596 - AlphaAgent - INFO - Current version: 1.0.0
+2025-10-16 20:14:38,596 - AlphaAgent - INFO - Loading module: simple_coordinator
+2025-10-16 20:14:42,656 - AlphaAgent - INFO - Module simple_coordinator initialized
+2025-10-16 20:14:42,656 - AlphaAgent - INFO - Loading module: resource_pool
+2025-10-16 20:14:48,201 - AlphaAgent - INFO - Module resource_pool initialized
+2025-10-16 20:14:48,201 - AlphaAgent - INFO - Checking for updates...
+2025-10-16 20:14:48,201 - AlphaUpdater - INFO - Checking for updates at https://alpha-node.onrender.com/updates.json
+2025-10-16 20:14:48,472 - AlphaUpdater - ERROR - Failed to check for updates: 404 Client Error: Not Found for url: https://alpha-node.onrender.com/updates.json
+2025-10-16 20:14:48,472 - AlphaAgent - INFO - No updates available
+2025-10-16 20:15:00,123 - AlphaAgent - INFO - === Alpha Update Agent Starting ===
+2025-10-16 20:15:00,123 - AlphaAgent - INFO - Current version: 1.0.0
+2025-10-16 20:15:00,123 - AlphaAgent - INFO - Loading module: simple_coordinator
+2025-10-16 20:15:04,177 - AlphaAgent - INFO - Module simple_coordinator initialized
+2025-10-16 20:15:04,177 - AlphaAgent - INFO - Loading module: resource_pool
+2025-10-16 20:15:09,498 - AlphaAgent - INFO - Module resource_pool initialized
+2025-10-16 20:15:09,499 - AlphaAgent - INFO - Checking for updates...
+2025-10-16 20:15:09,499 - AlphaUpdater - INFO - Checking for updates at https://alpha-node.onrender.com/updates.json
+2025-10-16 20:15:10,125 - AlphaUpdater - ERROR - Failed to check for updates: 404 Client Error: Not Found for url: https://alpha-node.onrender.com/updates.json
+2025-10-16 20:15:10,126 - AlphaAgent - INFO - No updates available
+2025-10-16 20:21:09,766 - AlphaAgent - INFO - === Alpha Update Agent Starting ===
+2025-10-16 20:21:09,767 - AlphaAgent - INFO - Current version: 1.0.0
+2025-10-16 20:21:09,767 - AlphaAgent - INFO - Loading module: simple_coordinator
+2025-10-16 20:21:10,074 - AlphaAgent - INFO - Module simple_coordinator initialized
+2025-10-16 20:21:10,074 - AlphaAgent - INFO - Loading module: resource_pool
+2025-10-16 20:21:11,780 - AlphaAgent - INFO - Module resource_pool initialized
+2025-10-16 20:21:11,780 - AlphaAgent - INFO - Checking for updates...
+2025-10-16 20:21:11,780 - AlphaUpdater - INFO - Checking for updates at https://alpha-node.onrender.com/updates.json
+2025-10-16 20:21:12,094 - AlphaUpdater - ERROR - Failed to check for updates: 404 Client Error: Not Found for url: https://alpha-node.onrender.com/updates.json
+2025-10-16 20:21:12,094 - AlphaAgent - INFO - No updates available
