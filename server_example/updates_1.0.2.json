@@ -1,0 +1,15 @@
+{
+    "version": "1.0.2",
+    "modules": ["gpu_share.py", "disk_share.py", "network_bridge.py"],
+    "url": "http://localhost:8000/updates/1.0.2.zip",
+    "checksum": "PLACEHOLDER_SHA256_CHECKSUM_HERE",
+    "release_date": "2025-10-17",
+    "changelog": [
+        "Added network bridge module",
+        "Performance improvements",
+        "Bug fixes"
+    ],
+    "required": false,
+    "min_version": "1.0.0"
+}
+

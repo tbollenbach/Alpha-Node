@@ -1,0 +1,10 @@
+{
+    "version": "1.0.0",
+    "update_server": "https://example.com/updates.json",
+    "check_interval": 3600,
+    "auto_update": true,
+    "modules_enabled": [],
+    "backup_count": 3,
+    "log_file": "agent.log"
+}
+

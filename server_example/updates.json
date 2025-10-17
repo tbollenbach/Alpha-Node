@@ -1,0 +1,15 @@
+{
+    "version": "1.0.1",
+    "modules": ["gpu_share.py", "disk_share.py"],
+    "url": "http://localhost:8000/updates/1.0.1.zip",
+    "checksum": "PLACEHOLDER_SHA256_CHECKSUM_HERE",
+    "release_date": "2025-10-16",
+    "changelog": [
+        "Added GPU sharing module",
+        "Added disk sharing module",
+        "Improved stability"
+    ],
+    "required": false,
+    "min_version": "1.0.0"
+}
+
