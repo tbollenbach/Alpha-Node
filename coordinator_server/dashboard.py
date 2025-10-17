@@ -77,6 +77,10 @@ DASHBOARD_HTML = """
         .agents-total .stat-number { color: #3498db; }
         .tasks-pending .stat-number { color: #f39c12; }
         .tasks-completed .stat-number { color: #9b59b6; }
+        .resource-cpu .stat-number { color: #e67e22; }
+        .resource-memory .stat-number { color: #3498db; }
+        .resource-storage .stat-number { color: #27ae60; }
+        .resource-gpu .stat-number { color: #8e44ad; }
         
         .content-grid { 
             display: grid; 
@@ -212,6 +216,25 @@ DASHBOARD_HTML = """
             </div>
         </div>
         
+        <div class="stats-grid">
+            <div class="stat-card resource-cpu">
+                <div class="stat-number" id="total-cpu-cores">0</div>
+                <div class="stat-label">Total CPU Cores</div>
+            </div>
+            <div class="stat-card resource-memory">
+                <div class="stat-number" id="total-memory-gb">0</div>
+                <div class="stat-label">Total Memory (GB)</div>
+            </div>
+            <div class="stat-card resource-storage">
+                <div class="stat-number" id="total-storage-gb">0</div>
+                <div class="stat-label">Total Storage (GB)</div>
+            </div>
+            <div class="stat-card resource-gpu">
+                <div class="stat-number" id="total-gpu-count">0</div>
+                <div class="stat-label">GPU Devices</div>
+            </div>
+        </div>
+        
         <div class="content-grid">
             <div class="panel">
                 <h2>🤖 Connected Agents</h2>
@@ -232,6 +255,26 @@ DASHBOARD_HTML = """
             </div>
         </div>
         
+        <div class="content-grid">
+            <div class="panel">
+                <h2>💻 Hardware Resources</h2>
+                <div id="resources-list">
+                    <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+                        No resource data available
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>📊 Resource Summary</h2>
+                <div id="resource-summary">
+                    <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+                        Loading resource data...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="footer">
             <div class="refresh-info">
                 Last updated: <span id="last-update">--</span> | Auto-refresh every 5 seconds
@@ -242,6 +285,7 @@ DASHBOARD_HTML = """
 
     <script>
         function updateDashboard() {
+            // Fetch dashboard data
             fetch('/api/dashboard-data')
                 .then(response => response.json())
                 .then(data => {
@@ -289,6 +333,65 @@ DASHBOARD_HTML = """
                 })
                 .catch(error => {
                     console.error('Error fetching dashboard data:', error);
+                });
+            
+            // Fetch resource data
+            fetch('/api/resources/summary')
+                .then(response => response.json())
+                .then(resourceData => {
+                    // Update resource stats
+                    document.getElementById('total-cpu-cores').textContent = resourceData.total_cpu_cores;
+                    document.getElementById('total-memory-gb').textContent = resourceData.total_memory_gb;
+                    document.getElementById('total-storage-gb').textContent = resourceData.total_storage_gb;
+                    document.getElementById('total-gpu-count').textContent = resourceData.gpu_count;
+                    
+                    // Update resources list
+                    const resourcesList = document.getElementById('resources-list');
+                    if (resourceData.agents.length === 0) {
+                        resourcesList.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 40px;">No resource data available</div>';
+                    } else {
+                        resourcesList.innerHTML = resourceData.agents.map(agent => `
+                            <div class="agent-item">
+                                <div class="agent-info">
+                                    <div class="agent-id">${agent.hostname} (${agent.platform})</div>
+                                    <div class="agent-hostname">
+                                        CPU: ${agent.cpu_cores} cores (${agent.cpu_usage}% used) | 
+                                        RAM: ${agent.memory_gb}GB (${agent.memory_usage}% used) | 
+                                        Storage: ${agent.storage_gb}GB
+                                        ${agent.gpu_available ? ` | GPU: ${agent.gpu_count} devices` : ''}
+                                    </div>
+                                </div>
+                                <div class="agent-status">
+                                    <div class="status-indicator"></div>
+                                    <div class="last-seen">${agent.uptime_hours}h uptime</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                    
+                    // Update resource summary
+                    const resourceSummary = document.getElementById('resource-summary');
+                    resourceSummary.innerHTML = `
+                        <div style="padding: 20px;">
+                            <div style="margin-bottom: 15px;">
+                                <strong>Total Pooled Resources:</strong>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                <div>CPU Cores: <strong>${resourceData.total_cpu_cores}</strong></div>
+                                <div>Memory: <strong>${resourceData.total_memory_gb}GB</strong></div>
+                                <div>Storage: <strong>${resourceData.total_storage_gb}GB</strong></div>
+                                <div>GPUs: <strong>${resourceData.gpu_count}</strong></div>
+                            </div>
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                                <div style="font-size: 0.8em; color: #7f8c8d;">
+                                    Resources from ${resourceData.total_agents} active agents
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error fetching resource data:', error);
                 });
         }
         

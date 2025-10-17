@@ -1,9 +1,9 @@
 {
     "version": "1.0.0",
-    "update_server": "https://example.com/updates.json",
+    "update_server": "https://alpha-node.onrender.com/updates.json",
     "check_interval": 3600,
     "auto_update": true,
-    "modules_enabled": ["simple_coordinator.py"],
+    "modules_enabled": ["simple_coordinator.py", "resource_pool.py"],
     "backup_count": 3,
     "log_file": "agent.log"
 }

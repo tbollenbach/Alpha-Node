@@ -21,6 +21,7 @@ agents = {}  # agent_id -> {info, last_heartbeat}
 tasks = []  # Pending tasks queue
 task_assignments = {}  # task_id -> agent_id
 results = {}  # task_id -> result
+resources = {}  # agent_id -> {resource_data, last_updated}
 
 # Lock for thread-safe operations
 lock = threading.Lock()
@@ -276,6 +277,98 @@ def format_last_seen(seconds_ago):
     else:
         return f"{int(seconds_ago // 86400)}d ago"
 
+
+@app.route('/api/resources/report', methods=['POST'])
+def report_resources():
+    """Receive resource information from agents."""
+    data = request.json
+    agent_id = data.get('agent_id')
+    
+    if not agent_id:
+        return jsonify({'error': 'agent_id required'}), 400
+    
+    with lock:
+        resources[agent_id] = {
+            'data': data,
+            'last_updated': time.time()
+        }
+    
+    print(f"✓ Resources updated for agent: {agent_id}")
+    return jsonify({'status': 'received'})
+
+@app.route('/api/resources/summary')
+def get_resources_summary():
+    """Get aggregated resource summary across all agents."""
+    with lock:
+        current_time = time.time()
+        
+        # Filter to only recent resource reports (within 5 minutes)
+        recent_resources = {
+            agent_id: data for agent_id, data in resources.items()
+            if current_time - data['last_updated'] < 300  # 5 minutes
+        }
+        
+        if not recent_resources:
+            return jsonify({
+                'total_agents': 0,
+                'total_cpu_cores': 0,
+                'total_memory_gb': 0,
+                'total_storage_gb': 0,
+                'gpu_count': 0,
+                'agents': []
+            })
+        
+        # Aggregate resources
+        total_cpu_cores = 0
+        total_memory_gb = 0
+        total_storage_gb = 0
+        gpu_count = 0
+        agent_summaries = []
+        
+        for agent_id, resource_data in recent_resources.items():
+            data = resource_data['data']
+            
+            # CPU cores
+            cpu_cores = data.get('cpu', {}).get('cores_logical', 0)
+            total_cpu_cores += cpu_cores
+            
+            # Memory
+            memory_gb = data.get('memory', {}).get('total_gb', 0)
+            total_memory_gb += memory_gb
+            
+            # Storage
+            storage_gb = sum(disk.get('total_gb', 0) for disk in data.get('storage', []))
+            total_storage_gb += storage_gb
+            
+            # GPU
+            gpu_info = data.get('gpu', {})
+            if gpu_info.get('available', False):
+                gpu_count += gpu_info.get('count', 0)
+            
+            # Agent summary
+            agent_summaries.append({
+                'agent_id': agent_id,
+                'hostname': data.get('system', {}).get('hostname', 'Unknown'),
+                'platform': data.get('system', {}).get('platform', 'Unknown'),
+                'cpu_cores': cpu_cores,
+                'memory_gb': memory_gb,
+                'storage_gb': storage_gb,
+                'gpu_available': gpu_info.get('available', False),
+                'gpu_count': gpu_info.get('count', 0),
+                'cpu_usage': data.get('cpu', {}).get('usage_percent', 0),
+                'memory_usage': data.get('memory', {}).get('usage_percent', 0),
+                'last_updated': resource_data['last_updated'],
+                'uptime_hours': round(data.get('system', {}).get('uptime_seconds', 0) / 3600, 1)
+            })
+        
+        return jsonify({
+            'total_agents': len(recent_resources),
+            'total_cpu_cores': total_cpu_cores,
+            'total_memory_gb': round(total_memory_gb, 2),
+            'total_storage_gb': round(total_storage_gb, 2),
+            'gpu_count': gpu_count,
+            'agents': agent_summaries
+        })
 
 @app.route('/api/tasks/create-test', methods=['POST'])
 def create_test_tasks():
