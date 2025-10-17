@@ -22,6 +22,7 @@ tasks = []  # Pending tasks queue
 task_assignments = {}  # task_id -> agent_id
 results = {}  # task_id -> result
 resources = {}  # agent_id -> {resource_data, last_updated}
+mining_stats = {}  # agent_id -> {mining_data, last_updated}
 
 # Lock for thread-safe operations
 lock = threading.Lock()
@@ -368,6 +369,86 @@ def get_resources_summary():
             'total_storage_gb': round(total_storage_gb, 2),
             'gpu_count': gpu_count,
             'agents': agent_summaries
+        })
+
+@app.route('/api/mining/report', methods=['POST'])
+def report_mining_stats():
+    """Receive mining statistics from agents."""
+    data = request.json
+    agent_id = data.get('agent_id')
+    
+    if not agent_id:
+        return jsonify({'error': 'agent_id required'}), 400
+    
+    with lock:
+        mining_stats[agent_id] = {
+            'data': data,
+            'last_updated': time.time()
+        }
+    
+    print(f"✓ Mining stats updated for agent: {agent_id} - {data.get('status', 'unknown')}")
+    return jsonify({'status': 'received'})
+
+@app.route('/api/mining/summary')
+def get_mining_summary():
+    """Get aggregated mining summary across all agents."""
+    with lock:
+        current_time = time.time()
+        
+        # Filter to only recent mining reports (within 2 minutes)
+        recent_mining = {
+            agent_id: data for agent_id, data in mining_stats.items()
+            if current_time - data['last_updated'] < 120  # 2 minutes
+        }
+        
+        if not recent_mining:
+            return jsonify({
+                'total_miners': 0,
+                'total_hashrate': 0,
+                'total_accepted_shares': 0,
+                'total_rejected_shares': 0,
+                'active_miners': []
+            })
+        
+        # Aggregate mining stats
+        total_hashrate = 0
+        total_accepted = 0
+        total_rejected = 0
+        miner_summaries = []
+        
+        for agent_id, mining_data in recent_mining.items():
+            data = mining_data['data']
+            
+            hashrate = data.get('hashrate', 0)
+            total_hashrate += hashrate
+            
+            accepted = data.get('accepted_shares', 0)
+            total_accepted += accepted
+            
+            rejected = data.get('rejected_shares', 0)
+            total_rejected += rejected
+            
+            miner_summaries.append({
+                'agent_id': agent_id,
+                'worker_name': data.get('worker_name', 'unknown'),
+                'status': data.get('status', 'unknown'),
+                'hashrate': hashrate,
+                'hashrate_mh': round(hashrate / 1000000, 2) if hashrate > 0 else 0,
+                'accepted_shares': accepted,
+                'rejected_shares': rejected,
+                'uptime': data.get('uptime', 0),
+                'pool': data.get('pool', 'unknown'),
+                'last_updated': mining_data['last_updated']
+            })
+        
+        return jsonify({
+            'total_miners': len(recent_mining),
+            'total_hashrate': total_hashrate,
+            'total_hashrate_mh': round(total_hashrate / 1000000, 2),
+            'total_accepted_shares': total_accepted,
+            'total_rejected_shares': total_rejected,
+            'efficiency': round((total_accepted / (total_accepted + total_rejected) * 100), 2) if (total_accepted + total_rejected) > 0 else 0,
+            'active_miners': miner_summaries
         })
 
 @app.route('/api/tasks/create-test', methods=['POST'])
