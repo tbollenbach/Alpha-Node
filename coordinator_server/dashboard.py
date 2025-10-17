@@ -1,255 +1,530 @@
 """
 Real-time Dashboard for Alpha Update Agent Coordination Server
-Shows live status of all connected agents, tasks, and system metrics.
+Professional dark-theme design with modern aesthetics.
 """
 
-from flask import Flask, render_template_string, jsonify
-import time
-from datetime import datetime
-import threading
-from collections import defaultdict
+from flask import render_template_string
 
-# Import the coordination server components
-from simple_server import agents, tasks, results, lock
-
-app = Flask(__name__)
-
-# Dashboard HTML template
-DASHBOARD_HTML = """
+def dashboard():
+    """Renders the professional real-time dashboard."""
+    return render_template_string("""
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alpha Coordinator Dashboard</title>
+    <title>Alpha Coordinator - Control Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            min-height: 100vh;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            padding: 20px; 
-        }
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-        .header h1 { 
-            font-size: 2.5em; 
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .header p { 
-            font-size: 1.2em; 
-            opacity: 0.9;
-        }
-        .stats-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-            gap: 20px; 
-            margin-bottom: 30px; 
-        }
-        .stat-card { 
-            background: white; 
-            padding: 25px; 
-            border-radius: 15px; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-        .stat-card:hover { transform: translateY(-5px); }
-        .stat-number { 
-            font-size: 2.5em; 
-            font-weight: bold; 
-            margin-bottom: 10px; 
-        }
-        .stat-label { 
-            color: #666; 
-            font-size: 1.1em; 
-        }
-        .agents-online .stat-number { color: #27ae60; }
-        .agents-total .stat-number { color: #3498db; }
-        .tasks-pending .stat-number { color: #f39c12; }
-        .tasks-completed .stat-number { color: #9b59b6; }
-        .resource-cpu .stat-number { color: #e67e22; }
-        .resource-memory .stat-number { color: #3498db; }
-        .resource-storage .stat-number { color: #27ae60; }
-        .resource-gpu .stat-number { color: #8e44ad; }
         
-        .content-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 30px; 
-            margin-bottom: 30px;
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #111630;
+            --bg-card: #1a1f3a;
+            --accent-primary: #00d4ff;
+            --accent-secondary: #7b2ff7;
+            --accent-tertiary: #ff6b35;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: rgba(255, 255, 255, 0.1);
         }
-        .panel { 
-            background: white; 
-            border-radius: 15px; 
-            padding: 25px; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
-        .panel h2 { 
-            margin-bottom: 20px; 
-            color: #2c3e50; 
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
+        
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(123, 47, 247, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 107, 53, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
-        .agent-item { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 15px; 
-            margin-bottom: 10px; 
-            background: #f8f9fa; 
-            border-radius: 10px; 
-            border-left: 4px solid #27ae60;
+        
+        .dashboard {
+            position: relative;
+            z-index: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
         }
-        .agent-item.offline { 
-            border-left-color: #e74c3c; 
-            opacity: 0.6; 
+        
+        /* Header */
+        .header {
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
-        .agent-info { 
-            flex: 1; 
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
-        .agent-id { 
-            font-weight: bold; 
-            color: #2c3e50; 
+        
+        .logo {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
         }
-        .agent-hostname { 
-            color: #7f8c8d; 
-            font-size: 0.9em; 
+        
+        .title-section h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
         }
-        .agent-status { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
+        
+        .title-section p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
         }
-        .status-indicator { 
-            width: 12px; 
-            height: 12px; 
-            border-radius: 50%; 
-            background: #27ae60; 
+        
+        .status-badge {
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            color: var(--success);
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
             animation: pulse 2s infinite;
         }
-        .status-indicator.offline { 
-            background: #e74c3c; 
-            animation: none; 
-        }
+        
         @keyframes pulse {
-            0% { opacity: 1; }
+            0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        .last-seen { 
-            font-size: 0.8em; 
-            color: #95a5a6; 
         }
         
-        .task-item { 
-            padding: 12px; 
-            margin-bottom: 8px; 
-            background: #f8f9fa; 
-            border-radius: 8px; 
-            border-left: 4px solid #f39c12;
-        }
-        .task-id { 
-            font-family: monospace; 
-            font-size: 0.9em; 
-            color: #7f8c8d; 
-        }
-        .task-type { 
-            font-weight: bold; 
-            color: #2c3e50; 
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
         
-        .footer { 
-            text-align: center; 
-            color: white; 
-            margin-top: 40px; 
-            opacity: 0.8; 
-        }
-        .refresh-info { 
-            font-size: 0.9em; 
-            color: #95a5a6; 
-            margin-top: 15px; 
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
         
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-primary);
+            box-shadow: 0 20px 40px rgba(0, 212, 255, 0.1);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-trend {
+            font-size: 0.75rem;
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        /* Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .panel-badge {
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--accent-primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        
+        .panel-body {
+            padding: 1.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .panel-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .panel-body::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        .panel-body::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 4px;
+        }
+        
+        /* Agent Items */
+        .agent-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        
+        .agent-item:hover {
+            border-color: var(--accent-primary);
+            transform: translateX(4px);
+        }
+        
+        .agent-info {
+            flex: 1;
+        }
+        
+        .agent-name {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+        
+        .agent-details {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .agent-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 12px var(--success);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.offline {
+            background: var(--danger);
+            box-shadow: 0 0 12px var(--danger);
+            animation: none;
+        }
+        
+        .status-text {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        
+        /* Resource Bars */
+        .resource-bar {
+            margin-top: 0.5rem;
+        }
+        
+        .resource-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .resource-bar-track {
+            height: 4px;
+            background: var(--bg-primary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .resource-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+        
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+        
+        .footer-link {
+            color: var(--accent-primary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        
+        .footer-link:hover {
+            color: var(--accent-secondary);
+        }
+        
+        /* Responsive */
         @media (max-width: 768px) {
-            .content-grid { 
-                grid-template-columns: 1fr; 
+            .dashboard {
+                padding: 1rem;
             }
-            .stats-grid { 
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
             }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+        }
+        
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Glow Effect */
+        .glow {
+            animation: glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.4); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🌐 Alpha Coordinator Dashboard</h1>
-            <p>Real-time monitoring of distributed agents</p>
-        </div>
+    <div class="dashboard">
+        <header class="header">
+            <div class="logo-section">
+                <div class="logo glow">α</div>
+                <div class="title-section">
+                    <h1>ALPHA CONTROL CENTER</h1>
+                    <p>Distributed Computing Coordination Platform</p>
+                </div>
+            </div>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                <span id="last-update">SYSTEM ONLINE</span>
+            </div>
+        </header>
         
         <div class="stats-grid">
-            <div class="stat-card agents-online">
-                <div class="stat-number" id="online-count">0</div>
+            <div class="stat-card">
                 <div class="stat-label">Agents Online</div>
+                <div class="stat-value gradient-text" id="online-count">0</div>
+                <div class="stat-trend">● Active nodes</div>
             </div>
-            <div class="stat-card agents-total">
-                <div class="stat-number" id="total-count">0</div>
-                <div class="stat-label">Total Agents</div>
-            </div>
-            <div class="stat-card tasks-pending">
-                <div class="stat-number" id="pending-count">0</div>
-                <div class="stat-label">Pending Tasks</div>
-            </div>
-            <div class="stat-card tasks-completed">
-                <div class="stat-number" id="completed-count">0</div>
-                <div class="stat-label">Completed Tasks</div>
-            </div>
-        </div>
-        
-        <div class="stats-grid">
-            <div class="stat-card resource-cpu">
-                <div class="stat-number" id="total-cpu-cores">0</div>
+            
+            <div class="stat-card">
                 <div class="stat-label">Total CPU Cores</div>
+                <div class="stat-value gradient-text" id="total-cpu-cores">0</div>
+                <div class="stat-trend">● Pooled compute</div>
             </div>
-            <div class="stat-card resource-memory">
-                <div class="stat-number" id="total-memory-gb">0</div>
-                <div class="stat-label">Total Memory (GB)</div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Total Memory</div>
+                <div class="stat-value gradient-text"><span id="total-memory-gb">0</span> GB</div>
+                <div class="stat-trend">● Available RAM</div>
             </div>
-            <div class="stat-card resource-storage">
-                <div class="stat-number" id="total-storage-gb">0</div>
-                <div class="stat-label">Total Storage (GB)</div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Total Storage</div>
+                <div class="stat-value gradient-text"><span id="total-storage-gb">0</span> GB</div>
+                <div class="stat-trend">● Distributed disk</div>
             </div>
-            <div class="stat-card resource-gpu">
-                <div class="stat-number" id="total-gpu-count">0</div>
+            
+            <div class="stat-card">
                 <div class="stat-label">GPU Devices</div>
+                <div class="stat-value gradient-text" id="total-gpu-count">0</div>
+                <div class="stat-trend">● Accelerators</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Pending Tasks</div>
+                <div class="stat-value gradient-text" id="pending-count">0</div>
+                <div class="stat-trend">● In queue</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Completed Tasks</div>
+                <div class="stat-value gradient-text" id="completed-count">0</div>
+                <div class="stat-trend">● Processed</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Total Agents</div>
+                <div class="stat-value gradient-text" id="total-count">0</div>
+                <div class="stat-trend">● Registered</div>
             </div>
         </div>
         
         <div class="content-grid">
             <div class="panel">
-                <h2>🤖 Connected Agents</h2>
-                <div id="agents-list">
-                    <div style="text-align: center; color: #7f8c8d; padding: 40px;">
-                        No agents connected
+                <div class="panel-header">
+                    <div class="panel-title">
+                        Connected Nodes
+                    </div>
+                    <div class="panel-badge" id="agents-badge">0</div>
+                </div>
+                <div class="panel-body" id="agents-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">⚡</div>
+                        <div>No agents connected</div>
                     </div>
                 </div>
             </div>
             
             <div class="panel">
-                <h2>📋 Task Queue</h2>
-                <div id="tasks-list">
-                    <div style="text-align: center; color: #7f8c8d; padding: 40px;">
-                        No pending tasks
+                <div class="panel-header">
+                    <div class="panel-title">
+                        Task Queue
+                    </div>
+                    <div class="panel-badge" id="tasks-badge">0</div>
+                </div>
+                <div class="panel-body" id="tasks-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div>No pending tasks</div>
                     </div>
                 </div>
             </div>
@@ -257,30 +532,44 @@ DASHBOARD_HTML = """
         
         <div class="content-grid">
             <div class="panel">
-                <h2>💻 Hardware Resources</h2>
-                <div id="resources-list">
-                    <div style="text-align: center; color: #7f8c8d; padding: 40px;">
-                        No resource data available
+                <div class="panel-header">
+                    <div class="panel-title">
+                        Hardware Resources
+                    </div>
+                    <div class="panel-badge" id="resources-badge">0</div>
+                </div>
+                <div class="panel-body" id="resources-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">💻</div>
+                        <div>No resource data available</div>
                     </div>
                 </div>
             </div>
             
             <div class="panel">
-                <h2>📊 Resource Summary</h2>
-                <div id="resource-summary">
-                    <div style="text-align: center; color: #7f8c8d; padding: 40px;">
-                        Loading resource data...
+                <div class="panel-header">
+                    <div class="panel-title">
+                        System Metrics
+                    </div>
+                    <div class="panel-badge">LIVE</div>
+                </div>
+                <div class="panel-body" id="resource-summary">
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <div>Loading metrics...</div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div class="footer">
-            <div class="refresh-info">
-                Last updated: <span id="last-update">--</span> | Auto-refresh every 5 seconds
+        <footer class="footer">
+            <div>Alpha Distributed Computing Platform v2.0.0</div>
+            <div class="footer-links">
+                <a href="/api/status" class="footer-link">API Status</a>
+                <a href="https://github.com/tbollenbach/Alpha-Node" class="footer-link">GitHub</a>
+                <a href="/api/dashboard-data" class="footer-link">Raw Data</a>
             </div>
-            <p>&copy; 2025 Alpha Update Agent | Built with ❤️ for distributed systems</p>
-        </div>
+        </footer>
     </div>
 
     <script>
@@ -297,18 +586,24 @@ DASHBOARD_HTML = """
                     
                     // Update agents list
                     const agentsList = document.getElementById('agents-list');
+                    const agentsBadge = document.getElementById('agents-badge');
+                    agentsBadge.textContent = data.agents.length;
+                    
                     if (data.agents.length === 0) {
-                        agentsList.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 40px;">No agents connected</div>';
+                        agentsList.innerHTML = '<div class="empty-state"><div class="empty-icon">⚡</div><div>No agents connected</div></div>';
                     } else {
                         agentsList.innerHTML = data.agents.map(agent => `
-                            <div class="agent-item ${agent.online ? '' : 'offline'}">
+                            <div class="agent-item">
                                 <div class="agent-info">
-                                    <div class="agent-id">${agent.agent_id}</div>
-                                    <div class="agent-hostname">${agent.hostname || 'Unknown'}</div>
+                                    <div class="agent-name">${agent.agent_id}</div>
+                                    <div class="agent-details">
+                                        <span>Host: ${agent.hostname}</span>
+                                        <span>Last seen: ${agent.last_seen_text}</span>
+                                    </div>
                                 </div>
                                 <div class="agent-status">
                                     <div class="status-indicator ${agent.online ? '' : 'offline'}"></div>
-                                    <div class="last-seen">${agent.last_seen_text}</div>
+                                    <span class="status-text">${agent.online ? 'ONLINE' : 'OFFLINE'}</span>
                                 </div>
                             </div>
                         `).join('');
@@ -316,24 +611,26 @@ DASHBOARD_HTML = """
                     
                     // Update tasks list
                     const tasksList = document.getElementById('tasks-list');
+                    const tasksBadge = document.getElementById('tasks-badge');
+                    tasksBadge.textContent = data.tasks.length;
+                    
                     if (data.tasks.length === 0) {
-                        tasksList.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 40px;">No pending tasks</div>';
+                        tasksList.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div>No pending tasks</div></div>';
                     } else {
                         tasksList.innerHTML = data.tasks.map(task => `
-                            <div class="task-item">
-                                <div class="task-id">${task.task_id}</div>
-                                <div class="task-type">${task.type}</div>
-                                <div style="font-size: 0.9em; color: #7f8c8d;">${task.description}</div>
+                            <div class="agent-item">
+                                <div class="agent-info">
+                                    <div class="agent-name">Task ${task.task_id}</div>
+                                    <div class="agent-details">
+                                        <span>Type: ${task.type}</span>
+                                        <span>${task.description}</span>
+                                    </div>
+                                </div>
                             </div>
                         `).join('');
                     }
-                    
-                    // Update last refresh time
-                    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
                 })
-                .catch(error => {
-                    console.error('Error fetching dashboard data:', error);
-                });
+                .catch(error => console.error('Error fetching dashboard data:', error));
             
             // Fetch resource data
             fetch('/api/resources/summary')
@@ -347,23 +644,43 @@ DASHBOARD_HTML = """
                     
                     // Update resources list
                     const resourcesList = document.getElementById('resources-list');
+                    const resourcesBadge = document.getElementById('resources-badge');
+                    resourcesBadge.textContent = resourceData.agents.length;
+                    
                     if (resourceData.agents.length === 0) {
-                        resourcesList.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 40px;">No resource data available</div>';
+                        resourcesList.innerHTML = '<div class="empty-state"><div class="empty-icon">💻</div><div>No resource data available</div></div>';
                     } else {
                         resourcesList.innerHTML = resourceData.agents.map(agent => `
                             <div class="agent-item">
                                 <div class="agent-info">
-                                    <div class="agent-id">${agent.hostname} (${agent.platform})</div>
-                                    <div class="agent-hostname">
-                                        CPU: ${agent.cpu_cores} cores (${agent.cpu_usage}% used) | 
-                                        RAM: ${agent.memory_gb}GB (${agent.memory_usage}% used) | 
-                                        Storage: ${agent.storage_gb}GB
-                                        ${agent.gpu_available ? ` | GPU: ${agent.gpu_count} devices` : ''}
+                                    <div class="agent-name">${agent.hostname} · ${agent.platform}</div>
+                                    <div class="agent-details">
+                                        <span>CPU: ${agent.cpu_cores} cores</span>
+                                        <span>RAM: ${agent.memory_gb}GB</span>
+                                        <span>Storage: ${agent.storage_gb}GB</span>
+                                        ${agent.gpu_available ? `<span>GPU: ${agent.gpu_count}x</span>` : ''}
+                                    </div>
+                                    <div class="resource-bar">
+                                        <div class="resource-bar-label">
+                                            <span>CPU Usage</span>
+                                            <span>${agent.cpu_usage}%</span>
+                                        </div>
+                                        <div class="resource-bar-track">
+                                            <div class="resource-bar-fill" style="width: ${agent.cpu_usage}%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="resource-bar">
+                                        <div class="resource-bar-label">
+                                            <span>Memory Usage</span>
+                                            <span>${agent.memory_usage}%</span>
+                                        </div>
+                                        <div class="resource-bar-track">
+                                            <div class="resource-bar-fill" style="width: ${agent.memory_usage}%"></div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="agent-status">
-                                    <div class="status-indicator"></div>
-                                    <div class="last-seen">${agent.uptime_hours}h uptime</div>
+                                    <div class="status-text">${agent.uptime_hours}h</div>
                                 </div>
                             </div>
                         `).join('');
@@ -371,120 +688,55 @@ DASHBOARD_HTML = """
                     
                     // Update resource summary
                     const resourceSummary = document.getElementById('resource-summary');
-                    resourceSummary.innerHTML = `
-                        <div style="padding: 20px;">
-                            <div style="margin-bottom: 15px;">
-                                <strong>Total Pooled Resources:</strong>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
-                                <div>CPU Cores: <strong>${resourceData.total_cpu_cores}</strong></div>
-                                <div>Memory: <strong>${resourceData.total_memory_gb}GB</strong></div>
-                                <div>Storage: <strong>${resourceData.total_storage_gb}GB</strong></div>
-                                <div>GPUs: <strong>${resourceData.gpu_count}</strong></div>
-                            </div>
-                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                                <div style="font-size: 0.8em; color: #7f8c8d;">
-                                    Resources from ${resourceData.total_agents} active agents
+                    if (resourceData.total_agents > 0) {
+                        resourceSummary.innerHTML = `
+                            <div style="padding: 1rem 0;">
+                                <div style="margin-bottom: 1.5rem;">
+                                    <div class="stat-label">Total Pooled Resources</div>
+                                    <div style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                                        Aggregated from ${resourceData.total_agents} active node${resourceData.total_agents > 1 ? 's' : ''}
+                                    </div>
+                                </div>
+                                
+                                <div class="agent-item" style="flex-direction: column; align-items: stretch;">
+                                    <div class="agent-details" style="gap: 1rem; margin-bottom: 1rem;">
+                                        <div style="flex: 1;">
+                                            <div style="font-size: 2rem; font-weight: 800; color: var(--accent-primary);">${resourceData.total_cpu_cores}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-secondary);">CPU CORES</div>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="font-size: 2rem; font-weight: 800; color: var(--accent-secondary);">${resourceData.total_memory_gb}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-secondary);">GB RAM</div>
+                                        </div>
+                                    </div>
+                                    <div class="agent-details" style="gap: 1rem;">
+                                        <div style="flex: 1;">
+                                            <div style="font-size: 2rem; font-weight: 800; color: var(--success);">${resourceData.total_storage_gb}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-secondary);">GB STORAGE</div>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="font-size: 2rem; font-weight: 800; color: var(--accent-tertiary);">${resourceData.gpu_count}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-secondary);">GPU DEVICES</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    }
+                    
+                    // Update last update time
+                    const now = new Date();
+                    document.getElementById('last-update').textContent = `UPDATED ${now.toLocaleTimeString()}`;
                 })
-                .catch(error => {
-                    console.error('Error fetching resource data:', error);
-                });
+                .catch(error => console.error('Error fetching resource data:', error));
         }
         
-        // Update dashboard every 5 seconds
+        // Initial update
         updateDashboard();
-        setInterval(updateDashboard, 5000);
         
-        // Add some interactivity
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add click handlers for stat cards
-            document.querySelectorAll('.stat-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    this.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        this.style.transform = 'translateY(-5px)';
-                    }, 150);
-                });
-            });
-        });
+        // Update every 5 seconds
+        setInterval(updateDashboard, 5000);
     </script>
 </body>
 </html>
-"""
-
-@app.route('/')
-def dashboard():
-    """Main dashboard page."""
-    return render_template_string(DASHBOARD_HTML)
-
-@app.route('/api/dashboard-data')
-def dashboard_data():
-    """API endpoint for dashboard data."""
-    with lock:
-        current_time = time.time()
-        
-        # Calculate online agents
-        online_agents = []
-        for agent_id, data in agents.items():
-            last_seen_ago = current_time - data['last_heartbeat']
-            is_online = last_seen_ago < 60  # Online if heartbeat within 60 seconds
-            
-            online_agents.append({
-                'agent_id': agent_id,
-                'hostname': data['info'].get('hostname', 'Unknown'),
-                'online': is_online,
-                'last_seen': last_seen_ago,
-                'last_seen_text': format_last_seen(last_seen_ago)
-            })
-        
-        # Sort agents (online first, then by last seen)
-        online_agents.sort(key=lambda x: (not x['online'], x['last_seen']))
-        
-        # Get pending tasks
-        pending_tasks = []
-        for task in tasks:
-            pending_tasks.append({
-                'task_id': task['task_id'],
-                'type': task.get('type', 'unknown'),
-                'description': task.get('description', 'No description'),
-                'submitted_at': task.get('submitted_at', 0)
-            })
-        
-        return jsonify({
-            'total_agents': len(agents),
-            'online_agents': len([a for a in online_agents if a['online']]),
-            'pending_tasks': len(tasks),
-            'completed_tasks': len(results),
-            'agents': online_agents,
-            'tasks': pending_tasks,
-            'server_time': current_time
-        })
-
-def format_last_seen(seconds_ago):
-    """Format last seen time in human readable format."""
-    if seconds_ago < 60:
-        return f"{int(seconds_ago)}s ago"
-    elif seconds_ago < 3600:
-        return f"{int(seconds_ago // 60)}m ago"
-    elif seconds_ago < 86400:
-        return f"{int(seconds_ago // 3600)}h ago"
-    else:
-        return f"{int(seconds_ago // 86400)}d ago"
-
-if __name__ == '__main__':
-    print("""
-╔══════════════════════════════════════════════════════════════╗
-║              Alpha Coordinator Dashboard                     ║
-╚══════════════════════════════════════════════════════════════╝
-
-Dashboard: http://localhost:5000
-API: http://localhost:5000/api/dashboard-data
-
-Real-time monitoring of all connected agents and tasks.
     """)
-    
-    app.run(host='0.0.0.0', port=5000, debug=False)
