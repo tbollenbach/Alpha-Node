@@ -28,42 +28,55 @@ lock = threading.Lock()
 
 @app.route('/')
 def index():
-    """Dashboard showing system status."""
-    online_agents = [
-        agent_id for agent_id, data in agents.items()
-        if time.time() - data['last_heartbeat'] < 60
-    ]
-    
-    return f"""
-    <html>
-    <head><title>Alpha Coordinator</title></head>
-    <body style="font-family: monospace; padding: 20px;">
-        <h1>🌐 Alpha Update Agent - Coordination Server</h1>
-        <hr>
-        <h2>📊 System Status</h2>
-        <p><strong>Total Agents Registered:</strong> {len(agents)}</p>
-        <p><strong>Agents Online:</strong> {len(online_agents)}</p>
-        <p><strong>Pending Tasks:</strong> {len(tasks)}</p>
-        <p><strong>Completed Tasks:</strong> {len(results)}</p>
-        <hr>
-        <h2>🤖 Connected Agents</h2>
-        <ul>
-        {''.join(f'<li>{aid} - Last seen: {time.time() - agents[aid]["last_heartbeat"]:.0f}s ago</li>' 
-                 for aid in online_agents)}
-        </ul>
-        <hr>
-        <h2>📝 API Endpoints</h2>
-        <ul>
-            <li>POST /api/register - Register agent</li>
-            <li>POST /api/heartbeat - Send heartbeat</li>
-            <li>GET /api/tasks/next - Get next task</li>
-            <li>POST /api/tasks/submit - Submit new task</li>
-            <li>POST /api/tasks/result - Submit task result</li>
-            <li>GET /api/status - Get system status (JSON)</li>
-        </ul>
-    </body>
-    </html>
-    """
+    """Redirect to the enhanced dashboard."""
+    from flask import redirect
+    return redirect('/dashboard')
+
+@app.route('/dashboard')
+def dashboard():
+    """Enhanced dashboard page."""
+    try:
+        from dashboard import dashboard as dashboard_route
+        return dashboard_route()
+    except ImportError:
+        # Fallback to simple dashboard if dashboard module not available
+        online_agents = [
+            agent_id for agent_id, data in agents.items()
+            if time.time() - data['last_heartbeat'] < 60
+        ]
+        
+        return f"""
+        <html>
+        <head>
+            <title>Alpha Coordinator</title>
+            <meta http-equiv="refresh" content="5">
+            <style>
+                body {{ font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }}
+                .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }}
+                h1 {{ color: #333; }}
+                .stat {{ background: #e8f4fd; padding: 15px; margin: 10px 0; border-radius: 5px; }}
+                .agent {{ background: #f0f8f0; padding: 10px; margin: 5px 0; border-radius: 5px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🌐 Alpha Update Agent - Coordination Server</h1>
+                <hr>
+                <h2>📊 System Status</h2>
+                <div class="stat"><strong>Total Agents Registered:</strong> {len(agents)}</div>
+                <div class="stat"><strong>Agents Online:</strong> {len(online_agents)}</div>
+                <div class="stat"><strong>Pending Tasks:</strong> {len(tasks)}</div>
+                <div class="stat"><strong>Completed Tasks:</strong> {len(results)}</div>
+                <hr>
+                <h2>🤖 Connected Agents</h2>
+                {''.join(f'<div class="agent">{aid} - Last seen: {time.time() - agents[aid]["last_heartbeat"]:.0f}s ago</div>' 
+                         for aid in online_agents) if online_agents else '<div class="agent">No agents connected</div>'}
+                <hr>
+                <p><em>Auto-refresh every 5 seconds | <a href="/api/status">JSON API</a></em></p>
+            </div>
+        </body>
+        </html>
+        """
 
 
 @app.route('/api/register', methods=['POST'])
@@ -208,6 +221,60 @@ def get_status():
         'agents': online_agents,
         'tasks': [{'task_id': t['task_id'], 'type': t['type']} for t in tasks]
     })
+
+@app.route('/api/dashboard-data')
+def dashboard_data():
+    """API endpoint for dashboard data."""
+    with lock:
+        current_time = time.time()
+        
+        # Calculate online agents
+        online_agents = []
+        for agent_id, data in agents.items():
+            last_seen_ago = current_time - data['last_heartbeat']
+            is_online = last_seen_ago < 60  # Online if heartbeat within 60 seconds
+            
+            online_agents.append({
+                'agent_id': agent_id,
+                'hostname': data['info'].get('hostname', 'Unknown'),
+                'online': is_online,
+                'last_seen': last_seen_ago,
+                'last_seen_text': format_last_seen(last_seen_ago)
+            })
+        
+        # Sort agents (online first, then by last seen)
+        online_agents.sort(key=lambda x: (not x['online'], x['last_seen']))
+        
+        # Get pending tasks
+        pending_tasks = []
+        for task in tasks:
+            pending_tasks.append({
+                'task_id': task['task_id'],
+                'type': task.get('type', 'unknown'),
+                'description': task.get('description', 'No description'),
+                'submitted_at': task.get('submitted_at', 0)
+            })
+        
+        return jsonify({
+            'total_agents': len(agents),
+            'online_agents': len([a for a in online_agents if a['online']]),
+            'pending_tasks': len(tasks),
+            'completed_tasks': len(results),
+            'agents': online_agents,
+            'tasks': pending_tasks,
+            'server_time': current_time
+        })
+
+def format_last_seen(seconds_ago):
+    """Format last seen time in human readable format."""
+    if seconds_ago < 60:
+        return f"{int(seconds_ago)}s ago"
+    elif seconds_ago < 3600:
+        return f"{int(seconds_ago // 60)}m ago"
+    elif seconds_ago < 86400:
+        return f"{int(seconds_ago // 3600)}h ago"
+    else:
+        return f"{int(seconds_ago // 86400)}d ago"
 
 
 @app.route('/api/tasks/create-test', methods=['POST'])
